@@ -37,6 +37,22 @@ export const ROLE_LABELS: Record<string, string> = {
   viewer: 'Solo lectura',
 };
 
+export const ROLE_DESCRIPTIONS: Record<string, string> = {
+  super_admin: 'Control total incluyendo configuración de la organización',
+  owner: 'Control total de la organización',
+  admin: 'Gestionar inventario, categorías y préstamos',
+  member: 'Gestionar préstamos y ver inventario',
+  viewer: 'Ver inventario y préstamos, sin editar',
+};
+
+export const ROLE_COLORS: Record<string, { color: string; bg: string }> = {
+  super_admin: { color: '#cf222e', bg: '#ffebe9' },
+  owner: { color: '#8250df', bg: '#fbefff' },
+  admin: { color: '#9a6700', bg: '#fff8c5' },
+  member: { color: '#0969da', bg: '#ddf4ff' },
+  viewer: { color: '#57606a', bg: '#f6f8fa' },
+};
+
 export const ADMIN_ROLES = ['super_admin', 'owner', 'admin'];
 
 export const isAdminRole = (role: string | null | undefined) =>

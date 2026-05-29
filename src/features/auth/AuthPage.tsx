@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../../lib/authStore';
 import { APP_NAME } from '../../lib/constants';
-import { AlertIcon, FlameIcon, LockIcon } from '@primer/octicons-react';
+import { AlertIcon, LockIcon } from '@primer/octicons-react';
 
 export const AuthPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -25,14 +25,11 @@ export const AuthPage: React.FC = () => {
       <div style={{ width: '360px' }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{
-            width: '48px', height: '48px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, #f97316, #ef4444)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 12px',
-          }}>
-            <FlameIcon size={24} fill="#fff" />
-          </div>
+          <img
+            src="/img/xignis-logo.png"
+            alt="Xignis Logo"
+            style={{ width: '48px', height: '48px', margin: '0 auto 12px', display: 'block', objectFit: 'contain' }}
+          />
           <h1 style={{ fontSize: '24px', fontWeight: 300, color: '#1f2328', margin: 0 }}>
             Acceso interno
           </h1>

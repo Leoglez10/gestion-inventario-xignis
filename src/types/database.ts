@@ -56,7 +56,6 @@ export interface OrgMember {
   org_id: string;
   user_id: string;
   role: UserRole;
-  is_active: boolean;
   joined_at: string;
   user?: UserProfile;
 }

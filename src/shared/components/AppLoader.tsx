@@ -77,35 +77,17 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
           width: '56px',
           height: '56px',
           borderRadius: '14px',
-          background: 'linear-gradient(135deg, #f97316 0%, #ea580c 50%, #ef4444 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           position: 'relative',
           zIndex: 1,
         }}>
-          {/* X symbol with glow */}
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path 
-              d="M18 6L6 18M6 6L18 18" 
-              stroke="white" 
-              strokeWidth="3" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-              style={{ 
-                filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.5))',
-              }}
-            />
-          </svg>
-          
-          {/* Subtle inner glow */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: '14px',
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%)',
-            pointerEvents: 'none',
-          }} />
+          <img
+            src="/img/xignis-logo.png"
+            alt="Xignis Logo"
+            style={{ width: '56px', height: '56px', borderRadius: '14px', objectFit: 'contain' }}
+          />
         </div>
       </div>
 

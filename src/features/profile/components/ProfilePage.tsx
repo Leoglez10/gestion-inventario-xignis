@@ -6,7 +6,7 @@ import {
 } from '@primer/octicons-react';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../lib/authStore';
-import { ROLE_LABELS, APP_NAME } from '../../../lib/constants';
+import { ROLE_LABELS, ROLE_DESCRIPTIONS, ROLE_COLORS, APP_NAME } from '../../../lib/constants';
 
 const PROFILES_BUCKET = 'xignis-profiles';
 
@@ -248,7 +248,49 @@ export const ProfilePage: React.FC = () => {
             <div style={styles.infoRow}>
               <PersonIcon size={16} fill="#656d76" />
               <span style={styles.infoLabel}>Rol</span>
-              <span style={styles.roleBadge}>{ROLE_LABELS[role ?? ''] ?? role ?? 'Miembro'}</span>
+              <span style={{
+                ...styles.roleBadge,
+                backgroundColor: ROLE_COLORS[role ?? 'member']?.bg ?? '#ddf4ff',
+                color: ROLE_COLORS[role ?? 'member']?.color ?? '#0969da',
+              }}>{ROLE_LABELS[role ?? ''] ?? role ?? 'Miembro'}</span>
+            </div>
+          </div>
+
+          {/* Role Legend */}
+          <div style={styles.roleLegend}>
+            <div style={styles.yourRoleSection}>
+              <span style={styles.yourRoleTitle}>Tu rol te permite:</span>
+              <span style={styles.yourRoleDescription}>
+                ✓ {ROLE_DESCRIPTIONS[role ?? 'member'] ?? 'Gestionar préstamos y ver inventario'}
+              </span>
+            </div>
+            <div style={styles.allRolesSection}>
+              <span style={styles.allRolesTitle}>Todos los roles:</span>
+              {(['viewer', 'member', 'admin', 'owner', 'super_admin'] as const).map((r) => {
+                const isCurrentRole = r === role;
+                const colors = ROLE_COLORS[r];
+                return (
+                  <div key={r} style={{
+                    ...styles.roleRow,
+                    backgroundColor: isCurrentRole ? colors.bg : 'transparent',
+                    borderRadius: '6px',
+                    padding: isCurrentRole ? '4px 8px' : '2px 0',
+                    margin: isCurrentRole ? '0 -8px' : '0',
+                  }}>
+                    <span style={{
+                      ...styles.roleMiniBadge,
+                      backgroundColor: colors.bg,
+                      color: colors.color,
+                    }}>
+                      {ROLE_LABELS[r]}
+                    </span>
+                    <span style={styles.roleDescription}>
+                      {ROLE_DESCRIPTIONS[r]}
+                      {isCurrentRole && <span style={styles.youIndicator}> ← tu rol</span>}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -519,6 +561,64 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '4px 10px',
     borderRadius: '12px',
     backgroundColor: '#ddf4ff',
+    color: '#0969da',
+  },
+  roleLegend: {
+    marginTop: '12px',
+    backgroundColor: '#fff',
+    border: '1px solid #d0d7de',
+    borderRadius: '12px',
+    padding: '14px 16px',
+  },
+  yourRoleSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    marginBottom: '12px',
+    paddingBottom: '10px',
+    borderBottom: '1px solid #eef1f4',
+  },
+  yourRoleTitle: {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#1f2328',
+  },
+  yourRoleDescription: {
+    fontSize: '13px',
+    color: '#1a7f37',
+  },
+  allRolesSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  allRolesTitle: {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#656d76',
+    marginBottom: '4px',
+  },
+  roleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  roleMiniBadge: {
+    fontSize: '10px',
+    fontWeight: 600,
+    padding: '2px 6px',
+    borderRadius: '8px',
+    whiteSpace: 'nowrap',
+    minWidth: '80px',
+    textAlign: 'center',
+  },
+  roleDescription: {
+    fontSize: '12px',
+    color: '#656d76',
+  },
+  youIndicator: {
+    fontSize: '11px',
+    fontWeight: 600,
     color: '#0969da',
   },
   logoutButton: {

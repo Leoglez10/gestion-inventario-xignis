@@ -52,9 +52,10 @@ interface AppState {
   // ---- Transaction Actions ----
   createTransaction: (input: CreateTransactionInput) => Promise<{ loanCode: string | null; error: string | null }>;
   returnTransaction: (transactionId: string, conditionIn: ConditionGrade, nextStatus: ItemStatus, notes?: string) => Promise<{ error: string | null }>;
+  deleteTransaction: (transactionId: string) => Promise<{ error: string | null }>;
 
   // ---- Member Actions ----
-  inviteMember: (email: string, role: UserRole) => Promise<{ error: string | null; warning?: string }>;
+  createMember: (input: { email: string; password: string; full_name: string; role: UserRole }) => Promise<{ error: string | null; warning?: string; success?: string }>;
   updateMemberRole: (memberId: string, newRole: UserRole) => Promise<{ error: string | null }>;
   removeMember: (memberId: string) => Promise<{ error: string | null }>;
 
@@ -729,45 +730,116 @@ export const useAppStore = create<AppState>((set, get) => ({
     return { error: null };
   },
 
+  deleteTransaction: async (transactionId) => {
+    const transaction = get().transactions.find(t => t.id === transactionId);
+    if (!transaction) return { error: 'No se encontró el préstamo.' };
+
+    const previousTransactions = get().transactions;
+    const previousItems = get().items;
+    const itemIds = transaction.items?.map(item => item.item_id) ?? [];
+
+    // Optimistic: remove from state
+    set(state => ({
+      transactions: state.transactions.filter(t => t.id !== transactionId),
+    }));
+
+    // If transaction is active/overdue, return items to available
+    if (transaction.status === 'active' || transaction.status === 'overdue') {
+      if (itemIds.length > 0) {
+        const updateResults = await Promise.all(
+          itemIds.map(itemId => {
+            const item = previousItems.find(i => i.id === itemId);
+            return supabase
+              .from('items')
+              .update({
+                status: 'available',
+                quantity_available: item?.is_consumable ? item.quantity : 1,
+              })
+              .eq('id', itemId);
+          })
+        );
+
+        const itemError = updateResults.find(result => result.error)?.error;
+        if (itemError) {
+          set({ transactions: previousTransactions, items: previousItems });
+          return { error: `Error al devolver artículos: ${itemError.message}` };
+        }
+
+        // Update local items state
+        set(state => ({
+          items: state.items.map(item =>
+            itemIds.includes(item.id)
+              ? { ...item, status: 'available' as ItemStatus, quantity_available: item.is_consumable ? item.quantity : 1 }
+              : item
+          ),
+        }));
+      }
+    }
+
+    // Delete transaction_items first (foreign key)
+    const { error: txItemsError } = await supabase
+      .from('transaction_items')
+      .delete()
+      .eq('transaction_id', transactionId);
+
+    if (txItemsError) {
+      set({ transactions: previousTransactions, items: previousItems });
+      return { error: txItemsError.message };
+    }
+
+    // Delete the transaction
+    const { error: transactionError } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', transactionId);
+
+    if (transactionError) {
+      set({ transactions: previousTransactions, items: previousItems });
+      return { error: transactionError.message };
+    }
+
+    return { error: null };
+  },
+
   // ==========================================
   // MEMBERS
   // ==========================================
-  inviteMember: async (email, role) => {
+  createMember: async ({ email, password, full_name, role }) => {
     const orgId = get().activeOrgId;
     if (!orgId) return { error: 'No hay organización activa.' };
 
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) return { error: 'El email es requerido.' };
+    if (!full_name.trim()) return { error: 'El nombre es requerido.' };
+    if (password.length < 6) return { error: 'La contraseña debe tener al menos 6 caracteres.' };
 
-    // Look up user profile by email
-    const { data: profile, error: profileError } = await supabase
+    // Check if user already exists
+    const { data: existingProfile } = await supabase
       .from('profiles')
-      .select('id, full_name, email, avatar_url, created_at')
+      .select('id')
       .eq('email', normalizedEmail)
       .maybeSingle();
 
-    if (profileError) return { error: 'Error al buscar el usuario.' };
-
-    // If user already exists in profiles, add directly to org_members
-    if (profile) {
-      const existingMember = get().members.find(m => m.user_id === profile.id);
+    if (existingProfile) {
+      // Check if already a member
+      const existingMember = get().members.find(m => m.user_id === existingProfile.id);
       if (existingMember) return { error: 'Este usuario ya es miembro de la organización.' };
 
+      // User exists but not in this org - add directly
       const tempId = `temp-${Date.now()}`;
       const optimisticMember: OrgMember = {
         id: tempId,
         org_id: orgId,
-        user_id: profile.id,
+        user_id: existingProfile.id,
         role,
-        is_active: true,
         joined_at: new Date().toISOString(),
-        user: profile as UserProfile,
+        user: { id: existingProfile.id, email: normalizedEmail, full_name: full_name.trim(), avatar_url: null, created_at: new Date().toISOString() } as UserProfile,
       };
       set(state => ({ members: [...state.members, optimisticMember] }));
 
       const { data, error } = await supabase
         .from('org_members')
-        .insert([{ org_id: orgId, user_id: profile.id, role }])
+        .insert([{ org_id: orgId, user_id: existingProfile.id, role }])
         .select('*, profiles(*)')
         .single();
 
@@ -784,39 +856,61 @@ export const useAppStore = create<AppState>((set, get) => ({
         ),
       }));
 
-      return { error: null };
+      return { error: null, success: 'Miembro agregado directamente.' };
     }
 
-    // User doesn't exist yet — store pending invitation first
-    const { error: insertError } = await supabase
-      .from('pending_invitations')
-      .insert([{ email: normalizedEmail, org_id: orgId, role }]);
+    // User doesn't exist - create via Edge Function
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const { data: { session } } = await supabase.auth.getSession();
 
-    if (insertError) {
-      console.error('Error storing pending invitation:', insertError);
-      return { error: 'No se pudo registrar la invitación. Intenta de nuevo.' };
+    if (!session?.access_token) {
+      return { error: 'No hay sesión activa.' };
     }
 
-    // Try to send invitation email via Supabase Auth (with timeout)
     try {
-      const invitePromise = supabase.auth.inviteUserByEmail(normalizedEmail, {
-        redirectTo: `${window.location.origin}/login`,
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          password,
+          full_name: full_name.trim(),
+          role,
+          org_id: orgId,
+        }),
       });
-      const timeoutPromise = new Promise<{ error: { message: string } }>((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout')), 10000)
-      );
-      const { error: inviteError } = await Promise.race([invitePromise, timeoutPromise]);
 
-      if (inviteError) {
-        console.warn('Could not send invite email:', inviteError.message);
-        return { error: null, warning: 'Invitación registrada, pero no se pudo enviar el email. El usuario debe registrarse manualmente en la app.' };
+      const result = await response.json();
+
+      if (!response.ok) {
+        return { error: result.error || 'Error al crear el usuario.' };
       }
-    } catch (err) {
-      console.warn('Invite email timed out or failed:', err);
-      return { error: null, warning: 'Invitación registrada, pero no se pudo enviar el email. El usuario debe registrarse manualmente en la app.' };
-    }
 
-    return { error: null };
+      // Fetch the newly created member
+      const { data: newMember } = await supabase
+        .from('org_members')
+        .select('*, profiles(*)')
+        .eq('user_id', result.user_id)
+        .eq('org_id', orgId)
+        .maybeSingle();
+
+      if (newMember) {
+        const member: OrgMember = {
+          ...newMember,
+          user: newMember.profiles ?? newMember.user ?? undefined,
+        };
+        set(state => ({ members: [...state.members, member] }));
+      }
+
+      return { error: null, warning: result.warning, success: `Usuario creado: ${normalizedEmail}` };
+    } catch (err) {
+      console.error('Error calling create-user function:', err);
+      return { error: 'Error de conexión al crear el usuario.' };
+    }
   },
 
   updateMemberRole: async (memberId, newRole) => {

@@ -19,23 +19,26 @@ const ROLES: { value: UserRole; label: string; color: string; bg: string }[] = [
 const getRoleStyle = (role: string) => ROLES.find(r => r.value === role) ?? ROLES[1];
 
 export const MembersPage: React.FC = () => {
-  const { members, inviteMember, updateMemberRole, removeMember } = useAppStore();
+  const { members, createMember, updateMemberRole, removeMember } = useAppStore();
   const { role: currentUserRole, profile } = useAuthStore();
   const isAdmin = isAdminRole(currentUserRole);
 
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 760px)').matches);
   const [search, setSearch] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<UserRole>('member');
+  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [newMemberPassword, setNewMemberPassword] = useState('');
+  const [newMemberRole, setNewMemberRole] = useState<UserRole>('member');
+  const [showPassword, setShowPassword] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState<string | null>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
-  const inviteInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -99,6 +102,13 @@ export const MembersPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [success]);
 
+  // Auto-dismiss warning
+  useEffect(() => {
+    if (!warning) return;
+    const timer = setTimeout(() => setWarning(null), 5000);
+    return () => clearTimeout(timer);
+  }, [warning]);
+
   const toggleRoleDropdown = useCallback((memberId: string, e: React.MouseEvent) => {
     if (roleDropdownOpen === memberId) {
       setRoleDropdownOpen(null);
@@ -120,8 +130,14 @@ export const MembersPage: React.FC = () => {
 
   const handleInvite = useCallback(async () => {
     setError(null);
+    setWarning(null);
     setInviteLoading(true);
-    const result = await inviteMember(inviteEmail, inviteRole);
+    const result = await createMember({
+      email: newMemberEmail,
+      password: newMemberPassword,
+      full_name: newMemberName,
+      role: newMemberRole,
+    });
     setInviteLoading(false);
 
     if (result.error) {
@@ -129,11 +145,17 @@ export const MembersPage: React.FC = () => {
       return;
     }
 
-    setSuccess(result.warning ?? `Invitación enviada a ${inviteEmail}`);
-    setInviteEmail('');
-    setInviteRole('member');
+    if (result.warning) {
+      setWarning(result.warning);
+    }
+    setSuccess(result.success ?? `Usuario creado: ${newMemberEmail}`);
+    setNewMemberName('');
+    setNewMemberEmail('');
+    setNewMemberPassword('');
+    setNewMemberRole('member');
+    setShowPassword(false);
     setShowInviteModal(false);
-  }, [inviteEmail, inviteRole, inviteMember]);
+  }, [newMemberEmail, newMemberPassword, newMemberName, newMemberRole, createMember]);
 
   const handleRoleChange = useCallback(async (memberId: string, newRole: UserRole) => {
     setError(null);
@@ -181,9 +203,9 @@ export const MembersPage: React.FC = () => {
             type="button"
             onClick={() => setShowInviteModal(true)}
             style={styles.primaryButton}
-            aria-label="Invitar miembro"
+            aria-label="Agregar miembro"
           >
-            <PlusIcon size={16} /> Invitar
+            <PlusIcon size={16} /> Agregar
           </button>
         )}
       </div>
@@ -200,6 +222,14 @@ export const MembersPage: React.FC = () => {
       {success && (
         <div role="status" aria-live="polite" style={styles.successAlert}>
           {success}
+        </div>
+      )}
+      {warning && (
+        <div role="status" aria-live="polite" style={styles.warningAlert}>
+          {warning}
+          <button type="button" onClick={() => setWarning(null)} style={styles.alertClose} aria-label="Cerrar aviso">
+            <XIcon size={14} />
+          </button>
         </div>
       )}
 
@@ -441,7 +471,7 @@ export const MembersPage: React.FC = () => {
             aria-labelledby="invite-modal-title"
           >
             <div style={styles.modalHeader}>
-              <h2 id="invite-modal-title" style={styles.modalTitle}>Invitar miembro</h2>
+              <h2 id="invite-modal-title" style={styles.modalTitle}>Agregar miembro</h2>
               <button
                 type="button"
                 onClick={() => setShowInviteModal(false)}
@@ -461,35 +491,89 @@ export const MembersPage: React.FC = () => {
                 </div>
               )}
               <div style={{ marginBottom: '16px' }}>
-                <label htmlFor="invite-email" style={styles.label}>
+                <label htmlFor="member-name" style={styles.label}>
+                  <PersonIcon size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                  Nombre completo
+                </label>
+                <input
+                  id="member-name"
+                  type="text"
+                  placeholder="Juan Perez"
+                  value={newMemberName}
+                  onChange={e => setNewMemberName(e.target.value)}
+                  style={styles.input}
+                  autoComplete="name"
+                  required
+                />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label htmlFor="member-email" style={styles.label}>
                   <MailIcon size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
                   Email del usuario
                 </label>
                 <input
-                  ref={inviteInputRef}
-                  id="invite-email"
+                  id="member-email"
                   type="email"
                   placeholder="usuario@ejemplo.com"
-                  value={inviteEmail}
-                  onChange={e => setInviteEmail(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && inviteEmail.trim()) handleInvite(); }}
+                  value={newMemberEmail}
+                  onChange={e => setNewMemberEmail(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && newMemberEmail.trim() && newMemberPassword.trim() && newMemberName.trim()) handleInvite(); }}
                   style={styles.input}
                   autoComplete="email"
                   required
                 />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label htmlFor="member-password" style={styles.label}>
+                  Contraseña
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    id="member-password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Mínimo 6 caracteres"
+                    value={newMemberPassword}
+                    onChange={e => setNewMemberPassword(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && newMemberEmail.trim() && newMemberPassword.trim() && newMemberName.trim()) handleInvite(); }}
+                    style={{ ...styles.input, paddingRight: '40px' }}
+                    autoComplete="new-password"
+                    minLength={6}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#656d76',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {showPassword ? <XIcon size={14} /> : <MailIcon size={14} />}
+                  </button>
+                </div>
                 <p style={styles.inputHint}>
-                  Si el usuario ya tiene cuenta se agrega directamente. Si no, recibe un email de invitación.
+                  Mínimo 6 caracteres. El usuario podrá cambiarla después.
                 </p>
               </div>
               <div>
-                <label htmlFor="invite-role" style={styles.label}>
+                <label htmlFor="member-role" style={styles.label}>
                   <PersonIcon size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
                   Rol
                 </label>
                 <select
-                  id="invite-role"
-                  value={inviteRole}
-                  onChange={e => setInviteRole(e.target.value as UserRole)}
+                  id="member-role"
+                  value={newMemberRole}
+                  onChange={e => setNewMemberRole(e.target.value as UserRole)}
                   style={styles.input}
                 >
                   {ROLES.map(r => (
@@ -497,11 +581,11 @@ export const MembersPage: React.FC = () => {
                   ))}
                 </select>
                 <p style={styles.inputHint}>
-                  {getRoleStyle(inviteRole).label}: {
-                    inviteRole === 'viewer' ? 'Puede ver inventario y préstamos, sin editar.' :
-                    inviteRole === 'member' ? 'Puede gestionar préstamos y ver inventario.' :
-                    inviteRole === 'admin' ? 'Puede gestionar inventario, categorías y préstamos.' :
-                    inviteRole === 'owner' ? 'Control total de la organización.' :
+                  {getRoleStyle(newMemberRole).label}: {
+                    newMemberRole === 'viewer' ? 'Puede ver inventario y préstamos, sin editar.' :
+                    newMemberRole === 'member' ? 'Puede gestionar préstamos y ver inventario.' :
+                    newMemberRole === 'admin' ? 'Puede gestionar inventario, categorías y préstamos.' :
+                    newMemberRole === 'owner' ? 'Control total de la organización.' :
                     'Control total incluyendo configuración de la organización.'
                   }
                 </p>
@@ -518,14 +602,14 @@ export const MembersPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleInvite}
-                disabled={!inviteEmail.trim() || inviteLoading}
+                disabled={!newMemberName.trim() || !newMemberEmail.trim() || !newMemberPassword.trim() || newMemberPassword.length < 6 || inviteLoading}
                 style={{
                   ...styles.primaryButton,
-                  opacity: !inviteEmail.trim() || inviteLoading ? 0.6 : 1,
-                  cursor: !inviteEmail.trim() || inviteLoading ? 'not-allowed' : 'pointer',
+                  opacity: !newMemberName.trim() || !newMemberEmail.trim() || !newMemberPassword.trim() || newMemberPassword.length < 6 || inviteLoading ? 0.6 : 1,
+                  cursor: !newMemberName.trim() || !newMemberEmail.trim() || !newMemberPassword.trim() || newMemberPassword.length < 6 || inviteLoading ? 'not-allowed' : 'pointer',
                 }}
               >
-                {inviteLoading ? 'Enviando...' : 'Invitar'}
+                {inviteLoading ? 'Creando...' : 'Crear usuario'}
               </button>
             </div>
           </div>
@@ -587,6 +671,18 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '8px',
     backgroundColor: '#dafbe1',
     color: '#1a7f37',
+    fontSize: '13px',
+    marginBottom: '14px',
+  },
+  warningAlert: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '10px 14px',
+    border: '1px solid #d4a72c',
+    borderRadius: '8px',
+    backgroundColor: '#fff8c5',
+    color: '#9a6700',
     fontSize: '13px',
     marginBottom: '14px',
   },

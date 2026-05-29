@@ -169,6 +169,38 @@ export interface Database {
           user_id?: string
         }
       }
+      pending_invitations: {
+        Row: {
+          id: string
+          email: string
+          org_id: string
+          role: string
+          invited_by: string | null
+          status: string
+          created_at: string | null
+          accepted_at: string | null
+        }
+        Insert: {
+          id?: string
+          email: string
+          org_id: string
+          role?: string
+          invited_by?: string | null
+          status?: string
+          created_at?: string | null
+          accepted_at?: string | null
+        }
+        Update: {
+          id?: string
+          email?: string
+          org_id?: string
+          role?: string
+          invited_by?: string | null
+          status?: string
+          created_at?: string | null
+          accepted_at?: string | null
+        }
+      }
       organizations: {
         Row: {
           created_at: string | null

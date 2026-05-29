@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowSwitchIcon, CheckCircleIcon, PlusIcon, SearchIcon, XIcon } from '@primer/octicons-react';
+import { ArrowSwitchIcon, CheckCircleIcon, PlusIcon, SearchIcon, XIcon, TrashIcon } from '@primer/octicons-react';
 import { useAppStore } from '../../../lib/store';
 import { StatusBadge } from '../../../shared/components/StatusBadge';
 import { CheckoutKiosk } from './CheckoutKiosk';
@@ -15,7 +15,7 @@ const tabs = [
 ] as const;
 
 export const LoansPage: React.FC = () => {
-  const { transactions, returnTransaction } = useAppStore();
+  const { transactions, returnTransaction, deleteTransaction } = useAppStore();
   const [searchParams] = useSearchParams();
   const hasStatusParam = searchParams.has('status');
   const [activeTab, setActiveTab] = useState<'list' | 'kiosk'>(hasStatusParam ? 'list' : 'list');
@@ -28,6 +28,9 @@ export const LoansPage: React.FC = () => {
   const [returnNotes, setReturnNotes] = useState('');
   const [returnError, setReturnError] = useState<string | null>(null);
   const [isReturning, setIsReturning] = useState(false);
+  const [deletingLoan, setDeletingLoan] = useState<Transaction | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -69,6 +72,19 @@ export const LoansPage: React.FC = () => {
     setConditionIn('good');
     setNextStatus('available');
     setReturnNotes('');
+  };
+
+  const handleDelete = async () => {
+    if (!deletingLoan) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    const { error } = await deleteTransaction(deletingLoan.id);
+    setIsDeleting(false);
+    if (error) {
+      setDeleteError(error);
+      return;
+    }
+    setDeletingLoan(null);
   };
 
   const statusOptions: Array<{ value: TransactionStatus | 'all'; label: string }> = [
@@ -252,6 +268,14 @@ export const LoansPage: React.FC = () => {
                           <span>Devolver</span>
                         </button>
                       )}
+                      <button
+                        onClick={() => setDeletingLoan(loan)}
+                        style={styles.deleteButton}
+                        aria-label={`Eliminar préstamo de ${loan.user?.full_name}`}
+                        title="Eliminar registro"
+                      >
+                        <TrashIcon size={14} />
+                      </button>
                     </div>
                   </article>
                 ))
@@ -346,6 +370,63 @@ export const LoansPage: React.FC = () => {
                 style={styles.confirmButton}
               >
                 {isReturning ? 'Devolviendo...' : 'Confirmar'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingLoan && (
+        <div
+          style={styles.modalBackdrop}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-modal-title"
+        >
+          <div style={styles.modal}>
+            <header style={styles.modalHeader}>
+              <h2 id="delete-modal-title" style={styles.modalTitle}>Eliminar préstamo</h2>
+              <button
+                onClick={() => { setDeletingLoan(null); setDeleteError(null); }}
+                style={styles.modalClose}
+                aria-label="Cerrar"
+              >
+                <XIcon size={16} />
+              </button>
+            </header>
+
+            <p style={styles.modalSubtitle}>
+              {deletingLoan.loan_code ?? 'Sin folio'} · {deletingLoan.user?.full_name ?? 'Usuario'}
+            </p>
+
+            {deleteError && (
+              <div style={styles.errorAlert} role="alert">
+                {deleteError}
+              </div>
+            )}
+
+            <p style={{ fontSize: '14px', color: '#1f2328', margin: '0 0 16px' }}>
+              {deletingLoan.status === 'active' || deletingLoan.status === 'overdue'
+                ? 'Este préstamo está activo. Los artículos se devolverán automáticamente a inventario.'
+                : '¿Estás seguro de que quieres eliminar este registro de préstamo?'}
+            </p>
+
+            <footer style={styles.modalFooter}>
+              <button
+                type="button"
+                onClick={() => { setDeletingLoan(null); setDeleteError(null); }}
+                style={styles.cancelButton}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                style={styles.deleteConfirmButton}
+              >
+                {isDeleting ? 'Eliminando...' : 'Eliminar'}
               </button>
             </footer>
           </div>
@@ -653,6 +734,20 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     transition: 'all 0.15s ease',
   },
+  deleteButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '6px',
+    borderRadius: '6px',
+    border: '1px solid #d0d7de',
+    backgroundColor: '#fff',
+    color: '#656d76',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    minHeight: '32px',
+    minWidth: '32px',
+  },
   modalBackdrop: {
     position: 'fixed',
     inset: 0,
@@ -766,6 +861,17 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '8px',
     border: 'none',
     backgroundColor: '#2da44e',
+    color: '#fff',
+    fontFamily: 'inherit',
+    fontWeight: 600,
+    fontSize: '14px',
+    cursor: 'pointer',
+  },
+  deleteConfirmButton: {
+    padding: '10px 18px',
+    borderRadius: '8px',
+    border: 'none',
+    backgroundColor: '#cf222e',
     color: '#fff',
     fontFamily: 'inherit',
     fontWeight: 600,

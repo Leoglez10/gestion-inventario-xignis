@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
-  GraphIcon, PackageIcon, ArrowSwitchIcon, GearIcon, FlameIcon, SignOutIcon, PeopleIcon, PersonIcon,
+  GraphIcon, PackageIcon, ArrowSwitchIcon, GearIcon, SignOutIcon, PeopleIcon, PersonIcon,
 } from '@primer/octicons-react';
 import { useAuthStore } from '../../lib/authStore';
 import { APP_NAME, ROLE_LABELS, isAdminRole } from '../../lib/constants';
@@ -49,13 +49,11 @@ export const DashboardLayout: React.FC = () => {
           zIndex: 20,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-            <div style={{
-              width: '32px', height: '32px', borderRadius: '8px',
-              background: 'linear-gradient(135deg, #f97316, #ef4444)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              <FlameIcon size={18} fill="#fff" />
-            </div>
+            <img
+              src="/img/xignis-logo.png"
+              alt="Xignis Logo"
+              style={{ width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0, objectFit: 'contain' }}
+            />
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: '15px', fontWeight: 600, lineHeight: 1.2 }}>{APP_NAME}</div>
               <div style={{ color: '#7d8590', fontSize: '11px', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -146,13 +144,11 @@ export const DashboardLayout: React.FC = () => {
       >
         {/* Logo */}
         <div style={{ padding: '16px 16px 24px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid #30363d' }}>
-          <div style={{
-            width: '32px', height: '32px', borderRadius: '8px',
-            background: 'linear-gradient(135deg, #f97316, #ef4444)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <FlameIcon size={18} fill="#fff" />
-          </div>
+          <img
+            src="/img/xignis-logo.png"
+            alt="Xignis Logo"
+            style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'contain' }}
+          />
           <div>
             <div style={{ color: '#f0f6fc', fontSize: '15px', fontWeight: 600, lineHeight: 1.2 }}>{APP_NAME}</div>
             <div style={{ color: '#7d8590', fontSize: '11px', lineHeight: 1.2 }}>{orgName ?? 'Control interno'}</div>

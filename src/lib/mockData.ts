@@ -20,10 +20,10 @@ export const mockUsers: UserProfile[] = [
 ];
 
 export const mockMembers: OrgMember[] = [
-  { id: 'm1', org_id: mockOrg.id, user_id: 'u1', role: 'owner', is_active: true, joined_at: '2025-01-15T10:00:00Z', user: mockUsers[0] },
-  { id: 'm2', org_id: mockOrg.id, user_id: 'u2', role: 'admin', is_active: true, joined_at: '2025-02-10T08:00:00Z', user: mockUsers[1] },
-  { id: 'm3', org_id: mockOrg.id, user_id: 'u3', role: 'member', is_active: true, joined_at: '2025-03-01T09:00:00Z', user: mockUsers[2] },
-  { id: 'm4', org_id: mockOrg.id, user_id: 'u4', role: 'viewer', is_active: true, joined_at: '2025-03-20T14:00:00Z', user: mockUsers[3] },
+  { id: 'm1', org_id: mockOrg.id, user_id: 'u1', role: 'owner', joined_at: '2025-01-15T10:00:00Z', user: mockUsers[0] },
+  { id: 'm2', org_id: mockOrg.id, user_id: 'u2', role: 'admin', joined_at: '2025-02-10T08:00:00Z', user: mockUsers[1] },
+  { id: 'm3', org_id: mockOrg.id, user_id: 'u3', role: 'member', joined_at: '2025-03-01T09:00:00Z', user: mockUsers[2] },
+  { id: 'm4', org_id: mockOrg.id, user_id: 'u4', role: 'viewer', joined_at: '2025-03-20T14:00:00Z', user: mockUsers[3] },
 ];
 
 // ---- Categories ----

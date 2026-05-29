@@ -64,7 +64,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           .order('joined_at', { ascending: true });
           
         if (memError) console.error("Error fetching memberships:", memError);
-        console.log("Fetched memberships:", memberships);
           
         const membership = pickMembership(memberships);
 
@@ -85,6 +84,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
 
         if (event === 'SIGNED_IN' && session?.user) {
+          set({ loading: true });
+
           const { data: profile } = await supabase
             .from('profiles')
             .select('*')
@@ -98,7 +99,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             .order('joined_at', { ascending: true });
             
           if (memError) console.error("Error in onAuthStateChange:", memError);
-          console.log("Fetched memberships in AuthChange:", memberships);
             
           const membership = pickMembership(memberships);
 
@@ -107,6 +107,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             orgId: membership?.org_id ?? null,
             orgName: getOrgName(membership),
             role: membership?.role ?? null,
+            loading: false,
           });
         }
       });
